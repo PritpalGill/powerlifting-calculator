@@ -1,0 +1,32 @@
+{
+  "name": "powerlifting-calculator",
+  "version": "1.0.0",
+  "description": "IPF GL, DOTS and Wilks powerlifting scores, a total-to-pass solver, and an embeddable calculator widget.",
+  "license": "MIT",
+  "author": "PSG Labs Inc. (https://brolic.app)",
+  "homepage": "https://brolic.app/tools/powerlifting-calculator/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PritpalGill/powerlifting-calculator.git"
+  },
+  "keywords": ["powerlifting", "ipf-gl", "goodlift", "dots", "wilks", "calculator", "embed"],
+  "type": "module",
+  "exports": {
+    ".": "./dist/scores.js",
+    "./widget": "./dist/widget.js",
+    "./widget.css": "./dist/widget.css"
+  },
+  "files": ["dist", "src"],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && cp src/widget.css src/loader.js dist/",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test 'test/*.test.ts'",
+    "verify": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

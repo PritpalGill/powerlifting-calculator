@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Powerlifting score calculator demo</title>
+  <link rel="stylesheet" href="../dist/widget.css">
+  <style>
+    body { margin: 0; padding: 32px 16px; background: #eeede8; font-family: system-ui, sans-serif; }
+    main { max-width: 680px; margin: 0 auto; display: grid; gap: 24px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="light"></div>
+    <div id="dark"></div>
+  </main>
+  <script type="module">
+    import { mountPowerliftingCalculator } from "../dist/widget.js";
+    mountPowerliftingCalculator(document.getElementById("light"));
+    mountPowerliftingCalculator(document.getElementById("dark"), { theme: "dark", unit: "lb", passFormula: "ipfgl" });
+  </script>
+</body>
+</html>

@@ -276,7 +276,11 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
     const cell = element("div", "plc-score");
     const value = element("span", "plc-score-value", "—");
     const meta = element("span", "plc-score-meta");
-    add(cell, element("span", "plc-score-name", FORMULA_NAMES[formula]), value, meta);
+    // Formula names are English names in every language; lang keeps their capitals
+    // right on pages whose language uppercases differently (Turkish "WİLKS").
+    const name = element("span", "plc-score-name", FORMULA_NAMES[formula]);
+    name.lang = "en";
+    add(cell, name, value, meta);
     add(scoresRow, cell);
     scoreCells[formula] = { value, meta };
   }

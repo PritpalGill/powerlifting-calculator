@@ -1,6 +1,6 @@
 {
   "name": "powerlifting-calculator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "IPF GL, DOTS and Wilks powerlifting scores, a total-to-pass solver, and an embeddable calculator widget.",
   "license": "MIT",
   "author": "PSG Labs Inc. (https://brolic.app)",

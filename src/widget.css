@@ -88,21 +88,28 @@ select.plc-input { font-family: var(--plc-font); }
 
 .plc-segment-buttons {
   display: flex;
-  gap: 3px;
-  padding: 3px;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid var(--plc-border-strong);
   border-radius: 9px;
   background: var(--plc-surface);
 }
+/* Labels in other languages run longer than "Equipped": the text gets most of
+   the button, shrinks a little in a narrow calculator, and a word too long for
+   its half still breaks (hyphenated where the language allows) instead of
+   spilling out. */
 .plc-segment-buttons button {
   flex: 1;
+  min-width: 0;
   min-height: 36px;
-  padding: 4px;
+  padding: 4px 2px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   color: var(--plc-muted);
-  font: 500 0.88em var(--plc-font);
+  font: 500 min(0.88em, 4.2cqi) var(--plc-font);
+  overflow-wrap: anywhere;
+  hyphens: auto;
   cursor: pointer;
 }
 .plc-segment-buttons button[aria-pressed="true"] {

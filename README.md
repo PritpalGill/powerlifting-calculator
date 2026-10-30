@@ -40,6 +40,7 @@ Options, as `data-` attributes on the `div` or query parameters on the frame:
 | `unit` | `kg`, `lb` | `kg` |
 | `theme` | `light`, `dark`, `auto` (follows the visitor's system setting) | `light` |
 | `score` | `dots`, `ipfgl`, `wilks`: the score the "total to pass" section starts on | `dots` |
+| `lang` | `ja`, `ko`, `de`, `es`, `fr`, `pt`, `it`, `zh-hant`, `tr` (`data-lang` on the `div`; for the frame, put the language before the path: `https://brolic.app/de/embed/powerlifting-calculator/`) | English |
 
 The hosted calculator sets no cookies and loads no analytics. Every
 calculation runs in the visitor's browser.
@@ -68,6 +69,29 @@ load `dist/widget.js` and `dist/widget.css`:
 import { mountPowerliftingCalculator } from "./dist/widget.js";
 mountPowerliftingCalculator(document.querySelector("#calculator"), { unit: "lb", theme: "auto" });
 ```
+
+### In another language
+
+Every word the widget shows is in `ENGLISH_STRINGS`, exported from
+`widget.js`. Pass a translation as `strings` (anything left out stays English)
+and a `locale` for number formatting:
+
+```ts
+mountPowerliftingCalculator(element, {
+  locale: "de-DE", // 405,05 instead of 405.05
+  strings: {
+    title: "Powerlifting-Punkterechner",
+    bodyweight: "Körpergewicht",
+    // …
+    errors: { "Enter a bodyweight greater than 0.": "Gib ein Körpergewicht über 0 ein." },
+  },
+});
+```
+
+`{name}` in a string marks a value the widget fills in; keep each one.
+`errors` maps the score module's English messages to yours; the comment on
+`ENGLISH_STRINGS.errors` lists the ones the widget can show. Formula names
+(IPF GL, DOTS, Wilks) and units stay as they are.
 
 ## The formulas
 

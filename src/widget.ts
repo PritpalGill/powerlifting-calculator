@@ -15,6 +15,57 @@ import {
 export type Unit = "kg" | "lb";
 export type Theme = "light" | "dark" | "auto" | "inherit";
 
+/**
+ * Every word the widget shows. `{name}` marks a value the widget fills in.
+ * Pass a translation as `strings`; anything left out stays English.
+ */
+export const ENGLISH_STRINGS = {
+  title: "Powerlifting score calculator",
+  subtitle: "IPF GL, DOTS and original Wilks points from bodyweight and a total or bench press.",
+  units: "Units",
+  category: "Category",
+  men: "Men",
+  women: "Women",
+  event: "Event",
+  total: "Total",
+  bench: "Bench",
+  equipment: "Equipment",
+  classic: "Classic",
+  equipped: "Equipped",
+  /** A field's label with its unit: "Bodyweight (kg)". */
+  withUnit: "{label} ({unit})",
+  bodyweight: "Bodyweight",
+  totalResult: "Total",
+  benchResult: "Bench press",
+  theirBodyweight: "Their bodyweight",
+  theirTotal: "Their total",
+  theirBench: "Their bench press",
+  score: "Score",
+  loadingStep: "Loading step",
+  passTitleTotal: "Total needed to pass another lifter",
+  passTitleBench: "Bench press needed to pass another lifter",
+  /** `{message}` is why their score could not be calculated. */
+  compareTotal: "Enter their bodyweight and total to compare. {message}",
+  compareBench: "Enter their bodyweight and bench press to compare. {message}",
+  /** `{result}` is shown in bold; `{bodyweight}` includes its unit ("83 kg"). */
+  passResult: "You need {result} at your {bodyweight} bodyweight: {points} {formula} points, against their {rivalPoints}.",
+  /** `{weight}` is in kilograms. */
+  clamped: "{formula} used its {weight} kg coefficient, the nearest edge of its published bodyweight range.",
+  benchNote: "IPF GL has its own bench-only curves. DOTS and Wilks each have one curve, designed for three-lift totals; here it is applied to the bench result.",
+  equippedNote: "Equipment changes IPF GL only. DOTS and Wilks use one curve for classic and equipped lifting.",
+  attribution: "Calculator by Brolic",
+  /**
+   * The score module's English error messages and what to show instead. The
+   * widget can show these: "Enter a bodyweight greater than 0.", "Enter a
+   * total greater than 0.", "Enter a bench press greater than 0.", "IPF GL
+   * points are defined from 40 kg bodyweight for men.", "IPF GL points are
+   * defined from 35 kg bodyweight for women.", "Check the weights: this result
+   * is too large or too small."
+   */
+  errors: {} as Record<string, string>,
+};
+export type WidgetStrings = typeof ENGLISH_STRINGS;
+
 export type WidgetOptions = {
   unit?: Unit;
   /** "inherit" leaves the colour variables to the host page. */
@@ -24,6 +75,10 @@ export type WidgetOptions = {
   attribution?: boolean;
   /** The score the "total to pass" section starts on. */
   passFormula?: Formula;
+  /** A BCP 47 language tag for number formatting, such as "de-DE". Defaults to "en-US". */
+  locale?: string;
+  /** The widget's words in another language; see ENGLISH_STRINGS. */
+  strings?: Partial<WidgetStrings>;
 };
 
 const FORMULAS: Formula[] = ["ipfgl", "dots", "wilks"];
@@ -52,12 +107,9 @@ function add(parent: Node, ...children: Node[]) {
   for (const child of children) parent.appendChild(child);
 }
 
-function formatPoints(points: number) {
-  return points.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatWeight(value: number) {
-  return Number(value.toFixed(2)).toLocaleString("en-US", { maximumFractionDigits: 2 });
+/** Replace each `{name}` in a template with its value. */
+function fill(template: string, values: Record<string, string>) {
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => values[name] ?? match);
 }
 
 function parse(text: string) {
@@ -94,6 +146,15 @@ export function reportHeightToParent(target: HTMLElement) {
 
 export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOptions = {}) {
   const id = `plc-${++instances}`;
+  const text: WidgetStrings = { ...ENGLISH_STRINGS, ...options.strings };
+  const locale = options.locale ?? "en-US";
+  const formatPoints = (points: number) =>
+    points.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatWeight = (value: number) =>
+    Number(value.toFixed(2)).toLocaleString(locale, { maximumFractionDigits: 2 });
+  const formatCoefficient = (value: number, digits: number) =>
+    value.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false });
+  const message = (error: Error) => text.errors[error.message] ?? error.message;
   const state = {
     unit: options.unit === "lb" ? "lb" as Unit : "kg" as Unit,
     sex: "male" as Sex,
@@ -120,17 +181,17 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
 
   const head = element("div", "plc-head");
   add(head,
-    element("p", "plc-title", "Powerlifting score calculator"),
-    element("p", "plc-sub", "IPF GL, DOTS and original Wilks points from bodyweight and a total or bench press."),
+    element("p", "plc-title", text.title),
+    element("p", "plc-sub", text.subtitle),
   );
 
   // Segmented controls ------------------------------------------------------
   const segmentUpdaters: (() => void)[] = [];
   function segmented<T extends string>(
-    label: string, values: { value: T; label: string }[], read: () => T, write: (value: T) => void,
+    key: string, label: string, values: { value: T; label: string }[], read: () => T, write: (value: T) => void,
   ) {
     const group = element("div", "plc-segment");
-    const labelId = `${id}-${label.toLowerCase().replace(/\W+/g, "-")}`;
+    const labelId = `${id}-${key}`;
     const legend = element("span", "plc-label", label);
     legend.id = labelId;
     const buttons = element("div", "plc-segment-buttons");
@@ -192,16 +253,16 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
 
   const controls = element("div", "plc-grid");
   add(controls,
-    segmented("Units", [{ value: "kg", label: "kg" }, { value: "lb", label: "lb" }],
+    segmented("units", text.units, [{ value: "kg", label: "kg" }, { value: "lb", label: "lb" }],
       () => state.unit, (unit) => {
         if (unit !== state.unit) state.increment = INCREMENTS[unit][0]!;
         state.unit = unit;
       }),
-    segmented("Category", [{ value: "male", label: "Men" }, { value: "female", label: "Women" }],
+    segmented("category", text.category, [{ value: "male", label: text.men }, { value: "female", label: text.women }],
       () => state.sex, (sex) => { state.sex = sex; }),
-    segmented("Event", [{ value: "total", label: "Total" }, { value: "bench", label: "Bench" }],
+    segmented("event", text.event, [{ value: "total", label: text.total }, { value: "bench", label: text.bench }],
       () => state.lift, (lift) => { state.lift = lift; }),
-    segmented("Equipment", [{ value: "classic", label: "Classic" }, { value: "equipped", label: "Equipped" }],
+    segmented("equipment", text.equipment, [{ value: "classic", label: text.classic }, { value: "equipped", label: text.equipped }],
       () => state.equipment, (equipment) => { state.equipment = equipment; }),
     numberField("bodyweight"),
     numberField("result"),
@@ -215,7 +276,11 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
     const cell = element("div", "plc-score");
     const value = element("span", "plc-score-value", "—");
     const meta = element("span", "plc-score-meta");
-    add(cell, element("span", "plc-score-name", FORMULA_NAMES[formula]), value, meta);
+    // Formula names are English names in every language; lang keeps their capitals
+    // right on pages whose language uppercases differently (Turkish "WİLKS").
+    const name = element("span", "plc-score-name", FORMULA_NAMES[formula]);
+    name.lang = "en";
+    add(cell, name, value, meta);
     add(scoresRow, cell);
     scoreCells[formula] = { value, meta };
   }
@@ -224,9 +289,9 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
   // Total to pass -------------------------------------------------------------
   const pass = element("div", "plc-pass");
   const passTitle = element("p", "plc-pass-title");
-  const formulaSelect = select("Score", () => FORMULAS.map((value) => ({ value, label: FORMULA_NAMES[value] })),
+  const formulaSelect = select(text.score, () => FORMULAS.map((value) => ({ value, label: FORMULA_NAMES[value] })),
     () => state.passFormula, (value) => { state.passFormula = value; });
-  const incrementSelect = select("Loading step", () => INCREMENTS[state.unit].map((value) => ({ value, label: `${value} ${state.unit}` })),
+  const incrementSelect = select(text.loadingStep, () => INCREMENTS[state.unit].map((value) => ({ value, label: `${formatWeight(value)} ${state.unit}` })),
     () => state.increment, (value) => { state.increment = value; });
   const passGrid = element("div", "plc-grid");
   add(passGrid, formulaSelect.wrapper, incrementSelect.wrapper, numberField("rivalBodyweight"), numberField("rivalResult"));
@@ -238,7 +303,7 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
 
   if (options.attribution !== false) {
     const foot = element("p", "plc-foot");
-    const link = element("a", undefined, "Calculator by Brolic");
+    const link = element("a", undefined, text.attribution);
     link.href = options.attributionUrl ?? DEFAULT_ATTRIBUTION_URL;
     link.target = "_blank";
     link.rel = "noopener";
@@ -263,13 +328,13 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
     for (const refresh of segmentUpdaters) refresh();
     formulaSelect.refresh();
     incrementSelect.refresh();
-    const resultName = state.lift === "bench" ? "Bench press" : "Total";
+    const bench = state.lift === "bench";
     const labels: Record<Field, string> = {
-      bodyweight: "Bodyweight", result: resultName,
-      rivalBodyweight: "Their bodyweight", rivalResult: `Their ${resultName.toLowerCase()}`,
+      bodyweight: text.bodyweight, result: bench ? text.benchResult : text.totalResult,
+      rivalBodyweight: text.theirBodyweight, rivalResult: bench ? text.theirBench : text.theirTotal,
     };
     for (const field of Object.keys(entries) as Field[]) {
-      fieldLabels[field].textContent = `${labels[field]} (${state.unit})`;
+      fieldLabels[field].textContent = fill(text.withUnit, { label: labels[field], unit: state.unit });
       const shown = displayed(entries[field], state.unit);
       // Never rewrite the field being typed in; that would move the caret.
       if (document.activeElement !== inputs[field] || entries[field].unit !== state.unit) inputs[field].value = shown;
@@ -283,25 +348,23 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
       if (result instanceof Error) {
         cell.value.textContent = "—";
         cell.meta.textContent = "";
-        messages.add(result.message);
+        messages.add(message(result));
         continue;
       }
       cell.value.textContent = formatPoints(result.points);
-      cell.meta.textContent = `× ${result.coefficient.toFixed(formula === "ipfgl" ? 6 : 4)}`;
+      cell.meta.textContent = `× ${formatCoefficient(result.coefficient, formula === "ipfgl" ? 6 : 4)}`;
       if (result.bodyweightWasClamped)
-        messages.add(`${FORMULA_NAMES[formula]} used its ${formatWeight(result.formulaWeightKg)} kg coefficient, the nearest edge of its published bodyweight range.`);
+        messages.add(fill(text.clamped, { formula: FORMULA_NAMES[formula], weight: formatWeight(result.formulaWeightKg) }));
     }
-    if (state.lift === "bench")
-      messages.add("IPF GL has its own bench-only curves. DOTS and Wilks each have one curve, designed for three-lift totals; here it is applied to the bench result.");
-    else if (state.equipment === "equipped")
-      messages.add("Equipment changes IPF GL only. DOTS and Wilks use one curve for classic and equipped lifting.");
+    if (bench) messages.add(text.benchNote);
+    else if (state.equipment === "equipped") messages.add(text.equippedNote);
     notes.replaceChildren(...[...messages].map((message) => element("li", undefined, message)));
 
-    passTitle.textContent = `${resultName} needed to pass another lifter`;
+    passTitle.textContent = bench ? text.passTitleBench : text.passTitleTotal;
     const formula = state.passFormula;
     const rival = tryScore(formula, scoreInput(entries.rivalBodyweight, entries.rivalResult));
     if (rival instanceof Error) {
-      passResult.textContent = `Enter their bodyweight and ${resultName.toLowerCase()} to compare. ${rival.message}`;
+      passResult.textContent = fill(bench ? text.compareBench : text.compareTotal, { message: message(rival) });
       return;
     }
     const bodyweightKg = toKg(entries.bodyweight);
@@ -312,13 +375,16 @@ export function mountPowerliftingCalculator(root: HTMLElement, options: WidgetOp
         targetPoints: rival.points, incrementKg: state.increment * unitKg,
       });
       const strong = element("strong", undefined, `${formatWeight(needed.resultKg / unitKg)} ${state.unit}`);
-      passResult.replaceChildren(
-        "You need ", strong,
-        ` at your ${formatWeight(bodyweightKg / unitKg)} ${state.unit} bodyweight: ${formatPoints(needed.points)} ${FORMULA_NAMES[formula]} points, `
-        + `against their ${formatPoints(rival.points)}.`,
-      );
+      // The sentence around the bold result, in the template's own word order.
+      const [before = "", after = ""] = fill(text.passResult, {
+        bodyweight: `${formatWeight(bodyweightKg / unitKg)} ${state.unit}`,
+        points: formatPoints(needed.points),
+        formula: FORMULA_NAMES[formula],
+        rivalPoints: formatPoints(rival.points),
+      }).split("{result}");
+      passResult.replaceChildren(before, strong, after);
     } catch (error) {
-      passResult.textContent = (error as Error).message;
+      passResult.textContent = message(error as Error);
     }
   }
 

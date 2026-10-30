@@ -4,7 +4,9 @@
  * Replaces each <div class="brolic-powerlifting-calculator"></div> on the page
  * with an iframe of the hosted calculator, then sizes the frame to its content.
  * Optional attributes: data-unit="lb", data-theme="dark" or "auto",
- * data-score="ipfgl" or "wilks" (the score the "total to pass" section uses).
+ * data-score="ipfgl" or "wilks" (the score the "total to pass" section uses),
+ * data-lang="ja", "ko", "de", "es", "fr", "pt", "it", "zh-hant" or "tr" (the
+ * calculator's language; English when left out).
  *
  * The frame is served from the same origin as this script. It sets no cookies
  * and loads no analytics; every calculation runs in the visitor's browser.
@@ -12,6 +14,7 @@
 (function () {
   "use strict";
   var MESSAGE = "brolic-powerlifting-calculator:height";
+  var LANGUAGES = ["ja", "ko", "de", "es", "fr", "pt", "it", "zh-hant", "tr"];
   var script = document.currentScript;
   var origin = script && script.src ? new URL(script.src).origin : "https://brolic.app";
   var frames = [];
@@ -25,8 +28,10 @@
     if (theme === "dark" || theme === "auto") params.push("theme=" + theme);
     var score = node.getAttribute("data-score");
     if (score === "ipfgl" || score === "wilks") params.push("score=" + score);
+    var lang = node.getAttribute("data-lang");
+    var prefix = LANGUAGES.indexOf(lang) >= 0 ? "/" + lang : "";
     var frame = document.createElement("iframe");
-    frame.src = origin + "/embed/powerlifting-calculator/" + (params.length ? "?" + params.join("&") : "");
+    frame.src = origin + prefix + "/embed/powerlifting-calculator/" + (params.length ? "?" + params.join("&") : "");
     frame.title = "Powerlifting score calculator: IPF GL, DOTS and Wilks";
     frame.loading = "lazy";
     frame.style.cssText = "display:block;width:100%;max-width:680px;height:780px;border:0;";
